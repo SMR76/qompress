@@ -25,7 +25,7 @@
  */
 
 #include "qzipfile.h"
-namespace qompress 
+namespace qompress
 {
 
 QZipFile::QZipFile(const QString &name, QObject *parent) :
@@ -42,12 +42,12 @@ QZipFile::~QZipFile()
 bool QZipFile::open(OpenMode mode)
 {
     if (m_unzFile || m_zipFile) {
-        setErrorString("File is already open"); 
+        setErrorString("File is already open");
         return false;
     }
 
     if (mode == ReadOnly) {
-        m_unzFile = unzOpen64(m_fileName.toAscii());
+        m_unzFile = unzOpen64(m_fileName.toLatin1());
         if (m_unzFile == NULL) {
             // no valid information at this point
             setErrorString("Error opening Zip file for reading");
@@ -55,7 +55,7 @@ bool QZipFile::open(OpenMode mode)
         }
     }
     else if ((mode == WriteOnlyTruncate) || (mode == WriteOnlyAppend)) {
-        m_zipFile = zipOpen64(m_fileName.toAscii(),(mode == WriteOnlyAppend) ? 2 : 0);
+        m_zipFile = zipOpen64(m_fileName.toLatin1(),(mode == WriteOnlyAppend) ? 2 : 0);
         if (m_zipFile == NULL) {
             // no valid information at this point
             setErrorString("Error opening Zip file for writing");
@@ -82,7 +82,7 @@ void QZipFile::close()
     }
 }
 
-// 
+//
 // Un-archive API
 //
 
@@ -91,13 +91,13 @@ QZipFileEntry QZipFile::currentEntry()
     int err;
     char filename_inzip[256];
     unz_file_info64 file_info;
-    err = unzGetCurrentFileInfo64(m_unzFile, &file_info, filename_inzip, 
+    err = unzGetCurrentFileInfo64(m_unzFile, &file_info, filename_inzip,
             sizeof(filename_inzip), NULL, 0, NULL, 0);
     if (err) {
         setErrorString("Failed to current get entry info");
         return QZipFileEntry();
     }
-    else 
+    else
         return QZipFileEntry(filename_inzip, file_info);
 
 }
@@ -120,7 +120,7 @@ bool QZipFile::extractCurrentEntry(QIODevice &out, const QString &password)
     bool result = true;
 
     if (!password.isEmpty())
-        err = unzOpenCurrentFilePassword(m_unzFile, password.toAscii());
+        err = unzOpenCurrentFilePassword(m_unzFile, password.toLatin1());
     else
         err = unzOpenCurrentFile(m_unzFile);
     if (err!=UNZ_OK) {
@@ -143,7 +143,7 @@ bool QZipFile::extractCurrentEntry(QIODevice &out, const QString &password)
                 written = out.write(buf, err);
                 if (written < 0)
                     break;
-                err -= written; 
+                err -= written;
             } while (err > 0);
 
             if (written < 0)
@@ -165,7 +165,7 @@ bool QZipFile::extractCurrentEntry(QIODevice &out, const QString &password)
 
 bool QZipFile::extractEntry(QIODevice &out, const QString &file, const QString &password)
 {
-    if (unzLocateFile(m_unzFile, file.toAscii(), 1) != UNZ_OK)
+    if (unzLocateFile(m_unzFile, file.toLatin1(), 1) != UNZ_OK)
     {
         setErrorString("File '" + file + "' not found in archive");
         return false;
@@ -187,7 +187,7 @@ QStringList QZipFile::filenames()
     return result;
 }
 
-// 
+//
 // Archive API
 //
 
@@ -205,11 +205,11 @@ bool QZipFile::addEntry(QIODevice &in, const QString &file, const QString &passw
     zi.internal_fa = 0;
     zi.external_fa = 0;
 
-    int err = zipOpenNewFileInZip3_64(m_zipFile, file.toAscii(), &zi,
+    int err = zipOpenNewFileInZip3_64(m_zipFile, file.toLatin1(), &zi,
         NULL, 0, NULL, 0, NULL /* comment*/,
         (m_compressionLevel != 0) ? Z_DEFLATED : 0,
-        m_compressionLevel, 0, 
-        -MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY, 
+        m_compressionLevel, 0,
+        -MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY,
         NULL, crcFile, isZip64);
 
     if (err != ZIP_OK) {
