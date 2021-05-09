@@ -116,7 +116,7 @@ bool QZipFile::nextEntry()
 bool QZipFile::extractCurrentEntry(QIODevice &out, const QString &password)
 {
     int err;
-    char buf[8192];
+    QByteArray buf(currentEntry().uncompressedSize(),0);
     bool result = true;
 
     if (!password.isEmpty())
@@ -130,7 +130,7 @@ bool QZipFile::extractCurrentEntry(QIODevice &out, const QString &password)
 
     do
     {
-        err = unzReadCurrentFile(m_unzFile, buf, sizeof(buf));
+        err = unzReadCurrentFile(m_unzFile, buf.data(), buf.size());
         if (err<0)
         {
             setErrorString("Error reading current archive entry");
@@ -196,8 +196,7 @@ bool QZipFile::addEntry(QIODevice &in, const QString &file, const QString &passw
     zip_fileinfo zi;
     unsigned long crcFile=0;
     int isZip64 = 0;
-    char buf[8192];
-    qint64 readed;
+    QByteArray buf(in.size(),0);
 
     zi.tmz_date.tm_sec = zi.tmz_date.tm_min = zi.tmz_date.tm_hour =
     zi.tmz_date.tm_mday = zi.tmz_date.tm_mon = zi.tmz_date.tm_year = 0;
@@ -210,22 +209,22 @@ bool QZipFile::addEntry(QIODevice &in, const QString &file, const QString &passw
         (m_compressionLevel != 0) ? Z_DEFLATED : 0,
         m_compressionLevel, 0,
         -MAX_WBITS, DEF_MEM_LEVEL, Z_DEFAULT_STRATEGY,
-        NULL, crcFile, isZip64);
+        password.toStdString().c_str(), crcFile, isZip64);
 
     if (err != ZIP_OK) {
         setErrorString("FIXME");
         return false;
     }
 
-    while ((readed = in.read(buf, sizeof(buf))) > 0) {
-        err = zipWriteInFileInZip (m_zipFile, buf, readed);
+    while ((buf = in.read(INTMAX_MAX)).size() > 0) {
+        err = zipWriteInFileInZip (m_zipFile, buf.data(), buf.size());
         if (err < 0) {
             setErrorString("Error writing to zip file");
             return false;
         }
     }
 
-    if (readed < 0) {
+    if (buf.size() < 0) {
         setErrorString("Failed to read data");
         return false;
     }
